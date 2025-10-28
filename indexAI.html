@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AIチャットUI</title>
+  <style>
+    body {
+      margin: 0;
+      background: #0f0f0f;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+    }
+
+    #waveCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+
+    #ui {
+      position: absolute;
+      bottom: 10%;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 1rem;
+      z-index: 10;
+    }
+
+    #messageInput {
+      width: 400px;
+      padding: 1rem;
+      font-size: 1.2rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      border-radius: 8px;
+      backdrop-filter: blur(10px);
+      outline: none;
+    }
+
+    #messageInput::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    #sendBtn {
+      padding: 1rem 2rem;
+      font-size: 1.2rem;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: background 0.3s;
+    }
+
+    #sendBtn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="waveCanvas"></canvas>
+  <div id="ui">
+    <input type="text" id="messageInput" placeholder="メッセージを入力">
+    <button id="sendBtn">送信</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("waveCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let bars = [];
+    const barCount = 20;
+    const barWidth = 10;
+    const waveY = canvas.height / 2;
+
+    function createBars() {
+      bars = [];
+      const startX = canvas.width / 2 - (barCount * barWidth) / 2;
+      for (let i = 0; i < barCount; i++) {
+        bars.push({
+          x: startX + i * barWidth,
+          height: Math.random() * 40 + 10,
+          color: "#00ffff"
+        });
+      }
+    }
+
+    function drawBars() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      bars.forEach(bar => {
+        ctx.fillStyle = bar.color;
+        ctx.fillRect(bar.x, waveY, barWidth - 2, bar.height);
+      });
+    }
+
+    function animateBars() {
+      bars.forEach(bar => {
+        bar.height = Math.max(5, bar.height + (Math.random() * 6 - 3));
+      });
+      drawBars();
+      requestAnimationFrame(animateBars);
+    }
+
+    createBars();
+    animateBars();
+
+    document.getElementById("sendBtn").addEventListener("click", async () => {
+      const input = document.getElementById("messageInput").value.trim();
+      if (!input) return;
+
+      // 表示
+      ctx.font = "bold 32px Helvetica";
+      ctx.fillStyle = "#ffffff";
+      ctx.textAlign = "center";
+      ctx.fillText("送信中...", canvas.width / 2, canvas.height / 2);
+
+      // OpenAI API呼び出し（APIキーは安全に管理してください）
+      try {
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer YOUR_API_KEY", // ← ここにAPIキーを設定
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "gpt-4",
+            messages: [{ role: "user", content: input }]
+          })
+        });
+
+        const data = await response.json();
+        const reply = data.choices[0].message.content;
+
+        // 応答を表示
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBars();
+        ctx.font = "bold 28px Helvetica";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(reply, canvas.width / 2, canvas.height / 2);
+      } catch (err) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBars();
+        ctx.fillStyle = "#ff4444";
+        ctx.fillText("エラーが発生しました", canvas.width / 2, canvas.height / 2);
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
